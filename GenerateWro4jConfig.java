@@ -5,13 +5,15 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang.StringUtils;
 
-public class Temp {
+public class GenerateWro4jConfig {
 
     private static String template = "<js>$$$</js>";
 
@@ -21,16 +23,21 @@ public class Temp {
     static String extension = ".js";
     static String applicationNamePrefix = "appName.";
 
+    static Set<String> dependencies = new HashSet<String>();
+
     public static void main(String args[]) {
         try {
-            findAndPrint(basePath + "/extjs/app.js");
+            findAllDependencies(basePath + "/extjs/app.js");
+            for (String dep : dependencies) {
+                System.out.println(dep);
+            }
         } catch (IOException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
     }
 
-    static void findAndPrint(String path) throws IOException {
+    static void findAllDependencies(String path) throws IOException {
         String regexString = Pattern.quote("model:'") + "(.*?)" + Pattern.quote("'");
         Pattern pattern = Pattern.compile(regexString);
         Matcher matcher = pattern.matcher(readFile(path));
@@ -42,7 +49,7 @@ public class Temp {
                 for (String part : Arrays.asList(StringUtils.split(start, '.'))) {
                     newPath = newPath + seperator + part;
                 }
-                findAndPrint(newPath + extension);
+                findAllDependencies(newPath + extension);
             }
         }
 
@@ -57,7 +64,7 @@ public class Temp {
                 for (String part : Arrays.asList(StringUtils.split(start, '.'))) {
                     newPath = newPath + seperator + part;
                 }
-                findAndPrint(newPath + extension);
+                findAllDependencies(newPath + extension);
             }
         }
 
@@ -66,7 +73,8 @@ public class Temp {
         matcher = pattern.matcher(readFile(path));
         if (matcher.find()) {
             String start = matcher.group(0);
-            start = start.replace("requires:[", "").replace("]", "").replaceAll("'", "").replaceAll(applicationNamePrefix, "");
+            start = start.replace("requires:[", "").replace("]", "").replaceAll("'", "")
+                    .replaceAll(applicationNamePrefix, "");
             List<String> fileList = Arrays.asList(StringUtils.split(start, ','));
             for (String file : fileList) {
                 if (file.contains("Ext")) {
@@ -76,11 +84,11 @@ public class Temp {
                 for (String part : Arrays.asList(StringUtils.split(file, '.'))) {
                     newPath = newPath + seperator + part;
                 }
-                findAndPrint(newPath + extension);
+                findAllDependencies(newPath + extension);
             }
         }
         String result = template.replace("$$$", path.replace(basePath, ""));
-        System.out.println(result);
+        dependencies.add(result);
     }
 
     static String readFile(String path) throws IOException {
